@@ -3,108 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR код для Telegram бота</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <title>QR код для Telegram бота - Hospital Feedback</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
             background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
             text-align: center;
-            margin-bottom: 30px;
         }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
+        
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
         }
+        
         input[type="text"] {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
             font-size: 16px;
-            box-sizing: border-box;
+            transition: border-color 0.3s ease;
         }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
         button {
-            background-color: #007bff;
+            background: linear-gradient(135deg, #007bff, #0056b3);
             color: white;
-            padding: 12px 24px;
+            padding: 15px 30px;
             border: none;
-            border-radius: 5px;
-            cursor: pointer;
+            border-radius: 8px;
             font-size: 16px;
-            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
         }
+        
         button:hover {
-            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.3);
         }
+        
         #qrcode {
             text-align: center;
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
+            margin: 25px 0;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+            min-height: 200px;
         }
-        .instructions {
-            margin-top: 20px;
+        
+        .qr-info {
+            margin-top: 15px;
             padding: 15px;
-            background-color: #e7f3ff;
-            border-radius: 5px;
+            background: #e7f3ff;
+            border-radius: 8px;
             border-left: 4px solid #007bff;
         }
-        .instructions h3 {
-            margin-top: 0;
+        
+        .qr-info a {
             color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .instructions {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏥 QR код для Telegram бота</h1>
-        
-        <div class="form-group">
-            <label for="botUsername">Имя пользователя бота (без @):</label>
-            <input type="text" id="botUsername" placeholder="например: hospital_feedback_bot">
+        <div class="header">
+            <h1>🏥 QR код для Telegram бота</h1>
+            <p>Генератор QR кодов для системы обратной связи больницы</p>
         </div>
         
-        <button onclick="generateQR()">Сгенерировать QR код</button>
-        
-        <div id="qrcode"></div>
-        
-        <div class="instructions">
-            <h3>📋 Инструкции:</h3>
-            <ol>
-                <li>Введите имя пользователя вашего Telegram бота (без символа @)</li>
-                <li>Нажмите "Сгенерировать QR код"</li>
-                <li>Распечатайте или сохраните QR код</li>
-                <li>Разместите QR код в больнице для удобного доступа пациентов</li>
-            </ol>
-            <p><strong>Примечание:</strong> Убедитесь, что ваш бот активен и настроен правильно перед размещением QR кода.</p>
+        <div class="content">
+            <div class="form-group">
+                <label for="botUsername">Имя пользователя бота (без @):</label>
+                <input type="text" id="botUsername" placeholder="например: hospital_feedback_bot" 
+                       value="hospital_feedback_bot">
+            </div>
+            
+            <button onclick="generateQR()" id="generateBtn">🎯 Сгенерировать QR код</button>
+            <button onclick="clearQR()" style="background: #6c757d;">🗑️ Очистить</button>
+            
+            <div id="qrcode">
+                <div class="loading">QR код появится здесь</div>
+            </div>
+            
+            <div class="instructions">
+                <h3>📋 Инструкции:</h3>
+                <ol>
+                    <li>Введите имя пользователя вашего Telegram бота (без символа @)</li>
+                    <li>Нажмите "Сгенерировать QR код"</li>
+                    <li>Проверьте, что QR код отображается корректно</li>
+                    <li>Распечатайте QR код и разместите в больнице</li>
+                </ol>
+                <p><strong>💡 Совет:</strong> Убедитесь, что ваш бот активен и настроен правильно.</p>
+            </div>
         </div>
     </div>
 
     <script>
+        let qrCodeLoaded = false;
+        
+        // Проверяем загрузку QRCode библиотеки
+        function checkQRCodeLibrary() {
+            if (typeof QRCode !== 'undefined') {
+                qrCodeLoaded = true;
+                console.log('QRCode library loaded successfully');
+            } else {
+                console.error('QRCode library not loaded');
+                showMessage('Ошибка загрузки QR библиотеки. Проверьте интернет соединение.', 'error');
+            }
+        }
+        
+        // Проверяем каждые 500мс в течение 10 секунд
+        let checkInterval = setInterval(checkQRCodeLibrary, 500);
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            if (!qrCodeLoaded) {
+                showMessage('Не удалось загрузить QR библиотеку. Попробуйте обновить страницу.', 'error');
+            }
+        }, 10000);
+        
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            messageDiv.style.margin = '10px 0';
+            
+            const qrcode = document.getElementById('qrcode');
+            qrcode.parentNode.insertBefore(messageDiv, qrcode);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+        
         function generateQR() {
+            if (!qrCodeLoaded) {
+                showMessage('QR библиотека еще не загружена. Подождите немного.', 'error');
+                return;
+            }
+            
             const botUsername = document.getElementById('botUsername').value.trim();
             
             if (!botUsername) {
-                alert('Пожалуйста, введите имя пользователя бота');
+                showMessage('Пожалуйста, введите имя пользователя бота', 'error');
                 return;
             }
             
@@ -113,30 +226,57 @@
             // Очищаем предыдущий QR код
             document.getElementById('qrcode').innerHTML = '';
             
-            // Генерируем новый QR код
-            QRCode.toCanvas(document.getElementById('qrcode'), botUrl, {
-                width: 256,
-                margin: 2,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            }, function (error) {
-                if (error) {
-                    console.error('Ошибка генерации QR кода:', error);
-                    alert('Ошибка при генерации QR кода');
-                } else {
-                    // Добавляем информацию о боте
-                    const info = document.createElement('div');
-                    info.innerHTML = `
-                        <p style="margin-top: 15px; font-weight: bold; color: #007bff;">
-                            Ссылка на бота: <a href="${botUrl}" target="_blank">${botUrl}</a>
-                        </p>
-                    `;
-                    document.getElementById('qrcode').appendChild(info);
-                }
-            });
+            try {
+                // Создаем новый QR код
+                const qrcode = new QRCode(document.getElementById('qrcode'), {
+                    text: botUrl,
+                    width: 256,
+                    height: 256,
+                    colorDark: '#000000',
+                    colorLight: '#FFFFFF',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                // Добавляем информацию о боте
+                const info = document.createElement('div');
+                info.className = 'qr-info';
+                info.innerHTML = `
+                    <p><strong>🔗 Ссылка на бота:</strong> <a href="${botUrl}" target="_blank">${botUrl}</a></p>
+                    <p><strong>📱 Имя бота:</strong> @${botUsername}</p>
+                `;
+                document.getElementById('qrcode').appendChild(info);
+                
+                showMessage('QR код успешно сгенерирован!', 'success');
+                
+            } catch (error) {
+                console.error('Ошибка генерации QR кода:', error);
+                showMessage('Ошибка при генерации QR кода. Попробуйте еще раз.', 'error');
+                document.getElementById('qrcode').innerHTML = '<div class="loading">Ошибка генерации</div>';
+            }
         }
+        
+        function clearQR() {
+            document.getElementById('qrcode').innerHTML = '<div class="loading">QR код появится здесь</div>';
+            document.getElementById('botUsername').value = '';
+            showMessage('QR код очищен', 'success');
+        }
+        
+        // Автогенерация при загрузке страницы
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                const botUsername = document.getElementById('botUsername').value;
+                if (botUsername && qrCodeLoaded) {
+                    generateQR();
+                }
+            }, 2000); // Ждем 2 секунды для загрузки библиотеки
+        });
+        
+        // Генерация при нажатии Enter
+        document.getElementById('botUsername').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateQR();
+            }
+        });
     </script>
 </body>
 </html> 

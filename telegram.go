@@ -75,10 +75,17 @@ func (t *TelegramBot) Stop() error {
 }
 
 func (t *TelegramBot) handleUpdate(update tgbotapi.Update) {
-	if update.Message == nil {
+	if update.Message == nil && update.CallbackQuery == nil {
 		return
 	}
 
+	// Обрабатываем callback query (нажатие на кнопки)
+	if update.CallbackQuery != nil {
+		t.handleCallbackQuery(update.CallbackQuery)
+		return
+	}
+
+	// Обрабатываем обычные сообщения
 	message := update.Message
 	userID := message.From.ID
 
@@ -110,7 +117,41 @@ func (t *TelegramBot) handleUpdate(update tgbotapi.Update) {
 	case "waiting_for_message":
 		t.handleMessageInput(message, state)
 	default:
-		t.sendMessage(message.Chat.ID, "Пожалуйста, используйте /start для начала работы с ботом.")
+		t.sendMessageWithMenu(message.Chat.ID, "Пожалуйста, используйте /start для начала работы с ботом.")
+	}
+}
+
+func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+	userID := callback.From.ID
+	state, exists := userStates[userID]
+	if !exists {
+		state = &UserState{
+			UserID: userID,
+			State:  "start",
+			Data:   make(map[string]string),
+		}
+		userStates[userID] = state
+	}
+
+	state.LastSeen = time.Now()
+
+	switch callback.Data {
+	case "complaint":
+		state.Data["type"] = "complaint"
+		state.State = "waiting_for_message"
+		t.sendMessage(callback.Message.Chat.ID, "📝 Пожалуйста, опишите вашу жалобу подробно. Мы рассмотрим её в кратчайшие сроки.")
+	case "review":
+		state.Data["type"] = "review"
+		state.State = "waiting_for_message"
+		t.sendMessage(callback.Message.Chat.ID, "📝 Пожалуйста, поделитесь вашими впечатлениями о работе больницы.")
+	case "help":
+		t.sendHelp(callback.Message.Chat.ID)
+	case "stats":
+		t.handleStats(callback.Message.Chat.ID)
+	case "main_menu":
+		t.sendMainMenu(callback.Message.Chat.ID)
+	default:
+		t.logger.Warnf("Unknown callback data: %s", callback.Data)
 	}
 }
 
@@ -122,6 +163,8 @@ func (t *TelegramBot) handleCommand(message *tgbotapi.Message, state *UserState)
 		t.sendHelp(message.Chat.ID)
 	case "stats":
 		t.handleStats(message.Chat.ID)
+	case "menu":
+		t.sendMainMenu(message.Chat.ID)
 	default:
 		t.sendMessage(message.Chat.ID, "Неизвестная команда. Используйте /help для получения справки.")
 	}
@@ -133,14 +176,9 @@ func (t *TelegramBot) handleStart(message *tgbotapi.Message, state *UserState) {
 
 	text := `🏥 Добро пожаловать в систему обратной связи больницы!
 
-Пожалуйста, выберите тип вашего обращения:
+Пожалуйста, выберите тип вашего обращения:`
 
-1️⃣ Жалоба - если у вас есть претензии к качеству обслуживания
-2️⃣ Отзыв - если вы хотите поделиться положительными впечатлениями
-
-Выберите номер (1 или 2):`
-
-	t.sendMessage(message.Chat.ID, text)
+	t.sendMessageWithTypeButtons(message.Chat.ID, text)
 }
 
 func (t *TelegramBot) handleTypeSelection(message *tgbotapi.Message, state *UserState) {
@@ -159,7 +197,7 @@ func (t *TelegramBot) handleTypeSelection(message *tgbotapi.Message, state *User
 		state.State = "waiting_for_message"
 		t.sendMessage(message.Chat.ID, "📝 Пожалуйста, поделитесь вашими впечатлениями о работе больницы.")
 	default:
-		t.sendMessage(message.Chat.ID, "Пожалуйста, выберите 1 (жалоба) или 2 (отзыв).")
+		t.sendMessageWithTypeButtons(message.Chat.ID, "Пожалуйста, выберите тип обращения, используя кнопки ниже:")
 	}
 }
 
@@ -201,24 +239,123 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		responseText += "\n\nВаш отзыв очень важен для нас!"
 	}
 
-	t.sendMessage(message.Chat.ID, responseText)
+	responseText += "\n\nХотите отправить еще одно обращение?"
+
+	t.sendMessageWithMainMenu(message.Chat.ID, responseText)
 
 	// Сбрасываем состояние
 	state.State = "start"
 	state.Data = make(map[string]string)
 }
 
+func (t *TelegramBot) sendMessageWithTypeButtons(chatID int64, text string) {
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = "HTML"
+
+	// Создаем inline кнопки
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send message with buttons: ", err)
+	}
+}
+
+func (t *TelegramBot) sendMessageWithMainMenu(chatID int64, text string) {
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = "HTML"
+
+	// Создаем inline кнопки для главного меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏥 Новое обращение", "main_menu"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send message with main menu: ", err)
+	}
+}
+
+func (t *TelegramBot) sendMainMenu(chatID int64) {
+	text := `🏥 Главное меню системы обратной связи больницы
+
+Выберите действие:`
+
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = "HTML"
+
+	// Создаем inline кнопки для главного меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 Отправить жалобу", "complaint"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("⭐ Оставить отзыв", "review"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send main menu: ", err)
+	}
+}
+
 func (t *TelegramBot) sendHelp(chatID int64) {
 	helpText := `🤖 Справка по использованию бота:
 
+📝 <b>Отправка обращений:</b>
+• Жалоба - для претензий к качеству обслуживания
+• Отзыв - для положительных впечатлений
+
+📋 <b>Команды:</b>
 /start - Начать работу с ботом
 /help - Показать эту справку
+/menu - Главное меню
 /stats - Статистика обращений (только для администраторов)
 
-Бот предназначен для сбора жалоб и отзывов о работе больницы.
-Все обращения обрабатываются в кратчайшие сроки.`
+💡 <b>Как использовать:</b>
+1. Выберите тип обращения
+2. Опишите вашу проблему или впечатление
+3. Отправьте сообщение
 
-	t.sendMessage(chatID, helpText)
+✅ Все обращения обрабатываются в кратчайшие сроки.`
+
+	msg := tgbotapi.NewMessage(chatID, helpText)
+	msg.ParseMode = "HTML"
+
+	// Добавляем кнопку возврата в главное меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "main_menu"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send help: ", err)
+	}
 }
 
 func (t *TelegramBot) handleStats(chatID int64) {
@@ -236,12 +373,26 @@ func (t *TelegramBot) handleStats(chatID int64) {
 		return
 	}
 
-	statsText := "📊 Статистика обращений:\n\n"
-	statsText += fmt.Sprintf("Жалобы: %d\n", stats["complaint"])
-	statsText += fmt.Sprintf("Отзывы: %d\n", stats["review"])
-	statsText += fmt.Sprintf("Всего: %d", stats["complaint"]+stats["review"])
+	statsText := "📊 <b>Статистика обращений:</b>\n\n"
+	statsText += fmt.Sprintf("📝 Жалобы: %d\n", stats["complaint"])
+	statsText += fmt.Sprintf("⭐ Отзывы: %d\n", stats["review"])
+	statsText += fmt.Sprintf("📈 Всего: %d", stats["complaint"]+stats["review"])
 
-	t.sendMessage(chatID, statsText)
+	msg := tgbotapi.NewMessage(chatID, statsText)
+	msg.ParseMode = "HTML"
+
+	// Добавляем кнопку возврата в главное меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "main_menu"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send stats: ", err)
+	}
 }
 
 func (t *TelegramBot) sendMessage(chatID int64, text string) {
@@ -250,5 +401,23 @@ func (t *TelegramBot) sendMessage(chatID int64, text string) {
 
 	if _, err := t.bot.Send(msg); err != nil {
 		t.logger.Error("Failed to send message: ", err)
+	}
+}
+
+func (t *TelegramBot) sendMessageWithMenu(chatID int64, text string) {
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = "HTML"
+
+	// Добавляем кнопку возврата в главное меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "main_menu"),
+		),
+	)
+
+	msg.ReplyMarkup = keyboard
+
+	if _, err := t.bot.Send(msg); err != nil {
+		t.logger.Error("Failed to send message with menu: ", err)
 	}
 }
