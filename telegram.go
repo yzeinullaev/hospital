@@ -100,6 +100,12 @@ func (t *TelegramBot) handleCommand(message *tgbotapi.Message, state *UserState)
 		t.sendMainMenu(message.Chat.ID, "Добро пожаловать! Выберите действие:")
 	case "menu":
 		t.sendMainMenu(message.Chat.ID, "Главное меню:")
+	case "stats":
+		if t.isAdmin(message.From.ID) {
+			t.handleStats(message.Chat.ID)
+		} else {
+			t.sendMessage(message.Chat.ID, "❌ У вас нет доступа к статистике")
+		}
 	default:
 		t.sendMainMenu(message.Chat.ID, "Используйте /start для начала работы")
 	}
@@ -126,6 +132,18 @@ func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		state.State = "waiting_for_message"
 		state.Data["type"] = "review"
 		t.sendMessage(callback.Message.Chat.ID, "Пожалуйста, напишите ваш отзыв:")
+	case "stats":
+		if t.isAdmin(userID) {
+			t.handleStats(callback.Message.Chat.ID)
+		} else {
+			t.sendMessage(callback.Message.Chat.ID, "❌ У вас нет доступа к статистике")
+		}
+	case "new_request":
+		state.State = "start"
+		state.Data = make(map[string]string)
+		t.sendMainMenu(callback.Message.Chat.ID, "Выберите тип обращения:")
+	case "help":
+		t.sendHelp(callback.Message.Chat.ID)
 	default:
 		t.sendMainMenu(callback.Message.Chat.ID, "Выберите действие:")
 	}
@@ -173,27 +191,43 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		t.logger.Error("Failed to send email: ", err)
 	}
 
-	// Отправляем подтверждение пользователю
-	responseText := fmt.Sprintf("✅ Ваш %s успешно отправлен!\n\nТекст: %s",
-		getTypeDisplayName(feedbackType), message.Text)
+	// Отправляем подтверждение пользователю с кнопками
+	responseText := fmt.Sprintf("✅ Ваш %s успешно отправлен!\n\nМы рассмотрим вашу %s и примем необходимые меры.\n\nХотите отправить еще одно обращение?",
+		getTypeDisplayName(feedbackType), getTypeDisplayName(feedbackType))
 
-	t.sendMessage(message.Chat.ID, responseText)
+	t.sendConfirmationMenu(message.Chat.ID, responseText)
 
 	// Сбрасываем состояние
 	state.State = "start"
 	state.Data = make(map[string]string)
-
-	// Показываем главное меню
-	t.sendMainMenu(message.Chat.ID, "Хотите отправить еще один отзыв или жалобу?")
 }
 
 func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
-			tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
-		),
-	)
+	// Проверяем, является ли пользователь администратором
+	isAdmin := t.isAdmin(chatID)
+
+	var keyboard tgbotapi.InlineKeyboardMarkup
+
+	if isAdmin {
+		// Меню для администратора с кнопкой статистики
+		keyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("📊 Статистика", "stats"),
+			),
+		)
+	} else {
+		// Меню для обычных пользователей без статистики
+		keyboard = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
+			),
+		)
+	}
 
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ReplyMarkup = keyboard
@@ -205,6 +239,61 @@ func (t *TelegramBot) sendMessage(chatID int64, text string) {
 	t.bot.Send(msg)
 }
 
+func (t *TelegramBot) handleStats(chatID int64) {
+	stats, err := t.database.GetFeedbackStats()
+	if err != nil {
+		t.logger.Error("Failed to get stats: ", err)
+		t.sendMessage(chatID, "❌ Ошибка при получении статистики")
+		return
+	}
+
+	complaints := stats["complaint"]
+	reviews := stats["review"]
+	total := complaints + reviews
+
+	statsText := fmt.Sprintf("📊 Статистика обращений\n\n"+
+		"📝 Жалобы: %d\n"+
+		"⭐ Отзывы: %d\n"+
+		"📈 Всего: %d", complaints, reviews, total)
+
+	t.sendMainMenu(chatID, statsText)
+}
+
+func (t *TelegramBot) sendConfirmationMenu(chatID int64, text string) {
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏥 Новое обращение", "new_request"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ReplyMarkup = keyboard
+	t.bot.Send(msg)
+}
+
+func (t *TelegramBot) sendHelp(chatID int64) {
+	helpText := `ℹ️ Помощь
+
+📝 Как отправить жалобу:
+1. Нажмите кнопку "📝 Жалоба"
+2. Напишите текст вашей жалобы
+3. Отправьте сообщение
+
+⭐ Как оставить отзыв:
+1. Нажмите кнопку "⭐ Отзыв"
+2. Напишите текст вашего отзыва
+3. Отправьте сообщение
+
+📧 Ваше обращение будет отправлено на email администрации.
+
+🔙 Для возврата в главное меню используйте /start или /menu`
+
+	t.sendMainMenu(chatID, helpText)
+}
+
 func getTypeDisplayName(feedbackType string) string {
 	switch feedbackType {
 	case "complaint":
@@ -214,4 +303,9 @@ func getTypeDisplayName(feedbackType string) string {
 	default:
 		return feedbackType
 	}
+}
+
+func (t *TelegramBot) isAdmin(userID int64) bool {
+	adminID := getEnvAsInt("ADMIN_USER_ID", 0)
+	return userID == int64(adminID)
 }
