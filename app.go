@@ -27,12 +27,25 @@ func NewApp(logger *logrus.Logger) *App {
 }
 
 func (a *App) Run() error {
-	// Инициализируем базу данных
-	db, err := NewDatabase()
-	if err != nil {
-		return fmt.Errorf("failed to initialize database: %w", err)
+	// Инициализируем базу данных с повторными попытками
+	var db *Database
+	var err error
+
+	for i := 0; i < 30; i++ {
+		db, err = NewDatabase()
+		if err == nil {
+			break
+		}
+		a.logger.Warnf("Failed to connect to database (attempt %d/30): %v", i+1, err)
+		time.Sleep(2 * time.Second)
 	}
+
+	if err != nil {
+		return fmt.Errorf("failed to initialize database after 30 attempts: %w", err)
+	}
+
 	a.database = db
+	a.logger.Info("Database connection established")
 
 	// Инициализируем email сервис
 	emailService := NewEmailService()

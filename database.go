@@ -38,7 +38,7 @@ type Database struct {
 }
 
 func NewDatabase() (*Database, error) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&timeout=10s&readTimeout=30s&writeTimeout=30s",
 		getEnv("DB_USER", "root"),
 		getEnv("DB_PASSWORD", ""),
 		getEnv("DB_HOST", "localhost"),
@@ -50,6 +50,11 @@ func NewDatabase() (*Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Настраиваем пул соединений
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	// Проверяем соединение
 	if err := db.Ping(); err != nil {

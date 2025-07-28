@@ -39,13 +39,24 @@ sudo chown -R 999:999 /opt/mysql_data
 echo "🔨 Собираем и запускаем приложение..."
 docker-compose up --build -d
 
-# Ждем инициализации MySQL
+# Ждем инициализации MySQL с проверкой
 echo "⏳ Ждем инициализации MySQL..."
-sleep 30
+for i in {1..60}; do
+    if docker-compose exec -T mysql mysqladmin ping -h localhost -u hospital_user -phospital_password > /dev/null 2>&1; then
+        echo "✅ MySQL готов к работе"
+        break
+    fi
+    echo "⏳ Ожидание MySQL... ($i/60)"
+    sleep 5
+done
 
 # Проверяем статус контейнеров
 echo "📊 Статус контейнеров:"
 docker-compose ps
+
+# Ждем еще немного для полной инициализации приложения
+echo "⏳ Ждем запуска приложения..."
+sleep 10
 
 # Проверяем health endpoint
 echo "🏥 Проверяем health endpoint..."
@@ -56,11 +67,15 @@ if curl -f http://localhost:8080/health > /dev/null 2>&1; then
 else
     echo "❌ Приложение не отвечает. Проверьте логи:"
     echo "docker-compose logs app"
+    echo ""
+    echo "🔍 Последние логи приложения:"
+    docker-compose logs app --tail=20
 fi
 
 # Проверяем состояние данных
 echo "📊 Проверка состояния данных..."
 if [ -f "./mysql-status.sh" ]; then
+    chmod +x ./mysql-status.sh
     ./mysql-status.sh
 fi
 
