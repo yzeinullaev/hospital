@@ -89,7 +89,7 @@ func (t *TelegramBot) handleMessage(message *tgbotapi.Message) {
 	case "waiting_for_message":
 		t.handleMessageInput(message, state)
 	default:
-		t.sendMainMenu(message.Chat.ID, "Выберите действие:")
+		t.sendMainMenu(message.Chat.ID, "Әрекетті таңдаңыз:")
 	}
 }
 
@@ -98,17 +98,17 @@ func (t *TelegramBot) handleCommand(message *tgbotapi.Message, state *UserState)
 	case "start":
 		state.State = "start"
 		state.Data = make(map[string]string)
-		t.sendMainMenu(message.Chat.ID, "Добро пожаловать! Выберите действие:")
+		t.sendMainMenu(message.Chat.ID, "Қош келдіңіз! Әрекетті таңдаңыз:")
 	case "menu":
-		t.sendMainMenu(message.Chat.ID, "Главное меню:")
+		t.sendMainMenu(message.Chat.ID, "Басты мәзір:")
 	case "stats":
 		if t.isAdmin(message.From.ID) {
 			t.handleStats(message.Chat.ID)
 		} else {
-			t.sendMessage(message.Chat.ID, "❌ У вас нет доступа к статистике")
+			t.sendMessage(message.Chat.ID, "❌ Сізде статистикаға қолжетімділік жоқ")
 		}
 	default:
-		t.sendMainMenu(message.Chat.ID, "Используйте /start для начала работы")
+		t.sendMainMenu(message.Chat.ID, "Жұмысты бастау үшін /start пәрменін пайдаланыңыз")
 	}
 }
 
@@ -128,16 +128,16 @@ func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	case "complaint":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "complaint"
-		t.sendMessage(callback.Message.Chat.ID, "📝 Пожалуйста, опишите вашу жалобу подробно. Мы рассмотрим её в кратчайшие сроки.")
+		t.sendMessage(callback.Message.Chat.ID, "📝 Өтініш, шағымыңызды толық сипаттаңыз. Біз оны мүмкіндігінше қысқа мерзімде қарастырамыз.")
 	case "review":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "review"
-		t.sendMessage(callback.Message.Chat.ID, "⭐ Пожалуйста, опишите ваш отзыв подробно. Мы ценим ваше мнение.")
+		t.sendMessage(callback.Message.Chat.ID, "⭐ Өтініш, пікіріңізді толық сипаттаңыз. Біз сіздің пікіріңізді жоғары бағалаймыз.")
 	case "stats":
 		if t.isAdmin(userID) {
 			t.handleStats(callback.Message.Chat.ID)
 		} else {
-			t.sendMessage(callback.Message.Chat.ID, "❌ У вас нет доступа к статистике")
+			t.sendMessage(callback.Message.Chat.ID, "❌Сізде статистикаға қолжетімділік жоқ")
 		}
 	case "new_request":
 		state.State = "start"
@@ -161,13 +161,13 @@ func (t *TelegramBot) handleTypeSelection(message *tgbotapi.Message, state *User
 	case "жалоба", "complaint":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "complaint"
-		t.sendMessage(message.Chat.ID, "📝 Пожалуйста, опишите вашу жалобу подробно. Мы рассмотрим её в кратчайшие сроки.")
+		t.sendMessage(message.Chat.ID, "📝 Өтініш, шағымыңызды толық сипаттаңыз. Біз оны мүмкіндігінше қысқа мерзімде қарастырамыз.")
 	case "отзыв", "review":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "review"
-		t.sendMessage(message.Chat.ID, "⭐ Пожалуйста, опишите ваш отзыв подробно. Мы ценим ваше мнение.")
+		t.sendMessage(message.Chat.ID, "⭐ Өтініш, пікіріңізді толық сипаттаңыз. Біз сіздің пікіріңізді жоғары бағалаймыз.")
 	default:
-		t.sendMessage(message.Chat.ID, "Пожалуйста, выберите 'жалоба' или 'отзыв'")
+		t.sendMessage(message.Chat.ID, "Өтініш, ‘шағым’ немесе ‘пікір’ таңдаңыз")
 	}
 }
 
@@ -207,7 +207,7 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 	// Сохраняем в базу данных
 	if err := t.database.SaveFeedback(feedback); err != nil {
 		t.logger.Error("Failed to save feedback: ", err)
-		t.sendMessage(message.Chat.ID, "Произошла ошибка при сохранении. Попробуйте позже.")
+		t.sendMessage(message.Chat.ID, " Сақтау кезінде қате орын алды. Кейінірек қайталап көріңіз.")
 		return
 	}
 
@@ -217,7 +217,7 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 	}
 
 	// Отправляем подтверждение пользователю с кнопками
-	responseText := fmt.Sprintf("✅ Ваш %s успешно отправлен!\n\nМы рассмотрим вашу %s и примем необходимые меры.\n\nХотите отправить еще одно обращение?",
+	responseText := fmt.Sprintf("✅ Сіздің %s сәтті жіберілді!\n\nБіз сіздің %s қарап, қажетті шараларды қабылдаймыз.\n\nТағы бір өтініш жібергіңіз келе ме?",
 		getTypeDisplayName(feedbackType), getTypeDisplayName(feedbackType))
 
 	t.sendConfirmationMenu(message.Chat.ID, responseText)
@@ -232,7 +232,7 @@ func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
 	isAdmin := t.isAdmin(chatID)
 
 	// Заголовок меню
-	menuText := "🏥 Главное меню системы обратной связи больницы\n\nВыберите действие:"
+	menuText := "🏥 Аурухананың кері байланыс жүйесінің басты мәзірі\n\nӘрекетті таңдаңыз:"
 
 	var keyboard tgbotapi.InlineKeyboardMarkup
 
@@ -240,13 +240,13 @@ func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
 		// Меню для администратора с кнопкой статистики
 		keyboard = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📝 Отправить жалобу", "complaint"),
+				tgbotapi.NewInlineKeyboardButtonData("📝 Шағым жіберу", "complaint"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("⭐ Оставить отзыв", "review"),
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Пікір қалдыру", "review"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+				tgbotapi.NewInlineKeyboardButtonData("❓ Көмек", "help"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("📊 Статистика", "stats"),
@@ -256,13 +256,13 @@ func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
 		// Меню для обычных пользователей без статистики
 		keyboard = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📝 Отправить жалобу", "complaint"),
+				tgbotapi.NewInlineKeyboardButtonData("📝 Шағым жіберу", "complaint"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("⭐ Оставить отзыв", "review"),
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Пікір қалдыру", "review"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+				tgbotapi.NewInlineKeyboardButtonData("❓ Көмек", "help"),
 			),
 		)
 	}
@@ -281,7 +281,7 @@ func (t *TelegramBot) handleStats(chatID int64) {
 	stats, err := t.database.GetFeedbackStats()
 	if err != nil {
 		t.logger.Error("Failed to get stats: ", err)
-		t.sendMessage(chatID, "❌ Ошибка при получении статистики")
+		t.sendMessage(chatID, "❌ Статистиканы алу кезінде қате орын алды")
 		return
 	}
 
@@ -289,7 +289,7 @@ func (t *TelegramBot) handleStats(chatID int64) {
 	reviews := stats["review"]
 	total := complaints + reviews
 
-	statsText := fmt.Sprintf("📊 Статистика обращений\n\n"+
+	statsText := fmt.Sprintf("📊 Өтініштер статистикасы\n\n"+
 		"📝 Жалобы: %d\n"+
 		"⭐ Отзывы: %d\n"+
 		"📈 Всего: %d", complaints, reviews, total)
@@ -297,7 +297,7 @@ func (t *TelegramBot) handleStats(chatID int64) {
 	// Отправляем статистику с кнопкой возврата в главное меню
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "back_to_menu"),
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Басты мәзір", "back_to_menu"),
 		),
 	)
 
@@ -309,10 +309,10 @@ func (t *TelegramBot) handleStats(chatID int64) {
 func (t *TelegramBot) sendConfirmationMenu(chatID int64, text string) {
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🏥 Новое обращение", "new_request"),
+			tgbotapi.NewInlineKeyboardButtonData("🏥 Жаңа өтініш", "new_request"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
+			tgbotapi.NewInlineKeyboardButtonData("❓ Көмек", "help"),
 		),
 	)
 
@@ -322,26 +322,26 @@ func (t *TelegramBot) sendConfirmationMenu(chatID int64, text string) {
 }
 
 func (t *TelegramBot) sendHelp(chatID int64) {
-	helpText := `ℹ️ Помощь
+	helpText := `ℹ️ Көмек
 
-📝 Как отправить жалобу:
-1. Нажмите кнопку "📝 Отправить жалобу"
-2. Опишите вашу жалобу подробно
-3. Отправьте сообщение
+📝 Шағым жіберу үшін:
+1. "📝 Шағым жіберу" батырмасын шертіңіз
+2. Шағымыңызды толық сипаттаңыз
+3. Хабарламаны жіберіңіз
 
-⭐ Как оставить отзыв:
-1. Нажмите кнопку "⭐ Оставить отзыв"
-2. Опишите ваш отзыв подробно
-3. Отправьте сообщение
+⭐ Пікірді қалай қалдыруға болады:
+1. ⭐ Пікір қалдыру” батырмасын басыңыз
+2. Пікіріңізді толық сипаттаңыз
+3. Хабарламаны жіберіңіз
 
-📧 Ваше обращение будет отправлено на email администрации.
+📧 Сіздің өтінішіңіз әкімшілікке email арқылы жіберіледі..
 
-🔙 Для возврата в главное меню используйте /start или /menu`
+🔙 Басты мәзірге оралу үшін /start немесе /menu пәрменін пайдаланыңыз
 
 	// Отправляем помощь с кнопкой возврата в главное меню
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "back_to_menu"),
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Басты мәзір", "back_to_menu"),
 		),
 	)
 
