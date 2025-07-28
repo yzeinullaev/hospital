@@ -32,12 +32,20 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 
 	// Используем текущее время в правильном часовом поясе
 	timezone := getEnv("TIMEZONE", "Asia/Almaty")
+	fmt.Printf("🔧 DEBUG: Переменная TIMEZONE = '%s'\n", timezone)
+
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		// Если не удалось загрузить часовой пояс, используем UTC
 		loc = time.UTC
+		fmt.Printf("⚠️ DEBUG: Не удалось загрузить часовой пояс '%s', используем UTC\n", timezone)
+	} else {
+		fmt.Printf("✅ DEBUG: Используем часовой пояс: %s\n", timezone)
 	}
+
 	currentTime := time.Now().In(loc)
+	fmt.Printf("🕐 DEBUG: Время для email: %s\n", currentTime.Format("02.01.2006 15:04:05"))
+	fmt.Printf("🕐 DEBUG: UTC время: %s\n", time.Now().UTC().Format("02.01.2006 15:04:05"))
 
 	// Формируем тему письма
 	subject := fmt.Sprintf("Новое обращение: %s", getTypeDisplayName(feedback.Type))

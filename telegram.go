@@ -176,12 +176,19 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 
 	// Используем правильный часовой пояс
 	timezone := getEnv("TIMEZONE", "Asia/Almaty")
+	fmt.Printf("🔧 DEBUG: Переменная TIMEZONE = '%s'\n", timezone)
+
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		// Если не удалось загрузить часовой пояс, используем UTC
 		loc = time.UTC
+		fmt.Printf("⚠️ DEBUG: Не удалось загрузить часовой пояс '%s', используем UTC\n", timezone)
+	} else {
+		fmt.Printf("✅ DEBUG: Используем часовой пояс: %s\n", timezone)
 	}
+
 	currentTime := time.Now().In(loc)
+	fmt.Printf("🕐 DEBUG: Время для сохранения: %s\n", currentTime.Format("02.01.2006 15:04:05"))
 
 	feedback := &Feedback{
 		UserID:    message.From.ID,
