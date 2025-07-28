@@ -214,6 +214,45 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		Status:    "new",
 	}
 
+	// Обрабатываем медиафайлы
+	if message.Photo != nil && len(message.Photo) > 0 {
+		// Берем последнее (самое большое) фото
+		photo := message.Photo[len(message.Photo)-1]
+		mediaFile := MediaFile{
+			FileID:   photo.FileID,
+			FileType: "photo",
+			FileSize: int64(photo.FileSize),
+		}
+		feedback.MediaFiles = append(feedback.MediaFiles, mediaFile)
+	} else if message.Video != nil {
+		mediaFile := MediaFile{
+			FileID:   message.Video.FileID,
+			FileType: "video",
+			FileName: message.Video.FileName,
+			FileSize: int64(message.Video.FileSize),
+			MimeType: message.Video.MimeType,
+		}
+		feedback.MediaFiles = append(feedback.MediaFiles, mediaFile)
+	} else if message.Document != nil {
+		mediaFile := MediaFile{
+			FileID:   message.Document.FileID,
+			FileType: "document",
+			FileName: message.Document.FileName,
+			FileSize: int64(message.Document.FileSize),
+			MimeType: message.Document.MimeType,
+		}
+		feedback.MediaFiles = append(feedback.MediaFiles, mediaFile)
+	} else if message.Audio != nil {
+		mediaFile := MediaFile{
+			FileID:   message.Audio.FileID,
+			FileType: "audio",
+			FileName: message.Audio.FileName,
+			FileSize: int64(message.Audio.FileSize),
+			MimeType: message.Audio.MimeType,
+		}
+		feedback.MediaFiles = append(feedback.MediaFiles, mediaFile)
+	}
+
 	// Сохраняем в базу данных
 	if err := t.database.SaveFeedback(feedback); err != nil {
 		t.logger.Error("Failed to save feedback: ", err)
@@ -237,6 +276,11 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		responseText += "\n\nМы рассмотрим вашу жалобу и примем необходимые меры."
 	} else {
 		responseText += "\n\nВаш отзыв очень важен для нас!"
+	}
+
+	// Добавляем информацию о медиафайлах
+	if len(feedback.MediaFiles) > 0 {
+		responseText += fmt.Sprintf("\n\n📎 Прикреплено файлов: %d", len(feedback.MediaFiles))
 	}
 
 	responseText += "\n\nХотите отправить еще одно обращение?"

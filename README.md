@@ -112,13 +112,21 @@ hospital-feedback-bot/
 1. Пользователь сканирует QR код
 2. Переходит в Telegram бот
 3. Выбирает тип обращения кнопкой
-4. Отправляет сообщение
+4. Отправляет сообщение (текст + медиафайлы)
 5. Данные сохраняются в БД и отправляются на email
 6. Получает подтверждение с кнопками навигации
 
+### Поддерживаемые медиафайлы
+- **📷 Фото** - изображения (JPEG, PNG, GIF)
+- **🎥 Видео** - видеофайлы (MP4, AVI, MOV)
+- **📄 Документы** - файлы (PDF, DOC, XLS)
+- **🎵 Аудио** - аудиофайлы (MP3, WAV, OGG)
+
 ## 🗄️ База данных
 
-### Структура таблицы `feedback`
+### Структура таблиц
+
+#### Таблица `feedback`
 ```sql
 CREATE TABLE feedback (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -135,6 +143,24 @@ CREATE TABLE feedback (
     INDEX idx_type (type),
     INDEX idx_status (status),
     INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+#### Таблица `media_files`
+```sql
+CREATE TABLE media_files (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    feedback_id BIGINT NOT NULL,
+    file_id VARCHAR(255) NOT NULL,
+    file_type ENUM('photo', 'video', 'document', 'audio') NOT NULL,
+    file_name VARCHAR(255),
+    file_size BIGINT,
+    mime_type VARCHAR(100),
+    url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_feedback_id (feedback_id),
+    INDEX idx_file_type (file_type),
+    FOREIGN KEY (feedback_id) REFERENCES feedback(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 

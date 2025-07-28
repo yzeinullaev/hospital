@@ -38,6 +38,7 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 		typeText = "ОТЗЫВ"
 	}
 
+	// Формируем тело письма
 	body := fmt.Sprintf(`
 🏥 Система обратной связи больницы
 
@@ -59,11 +60,41 @@ ID пользователя: %d
 		feedback.CreatedAt.Format("02.01.2006 15:04:05"),
 	)
 
+	// Добавляем информацию о медиафайлах
+	if len(feedback.MediaFiles) > 0 {
+		body += fmt.Sprintf("\n📎 Прикрепленные файлы (%d):\n", len(feedback.MediaFiles))
+		for i, media := range feedback.MediaFiles {
+			body += fmt.Sprintf("%d. %s", i+1, media.FileType)
+			if media.FileName != "" {
+				body += fmt.Sprintf(" - %s", media.FileName)
+			}
+			if media.FileSize > 0 {
+				body += fmt.Sprintf(" (%d байт)", media.FileSize)
+			}
+			body += "\n"
+		}
+	}
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", e.fromEmail)
 	m.SetHeader("To", e.toEmail)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/plain", body)
+
+	// Добавляем информацию о медиафайлах в тело письма
+	if len(feedback.MediaFiles) > 0 {
+		body += "\n\n📎 Медиафайлы:\n"
+		for i, media := range feedback.MediaFiles {
+			body += fmt.Sprintf("%d. Тип: %s", i+1, media.FileType)
+			if media.FileName != "" {
+				body += fmt.Sprintf(", Файл: %s", media.FileName)
+			}
+			if media.FileSize > 0 {
+				body += fmt.Sprintf(", Размер: %d байт", media.FileSize)
+			}
+			body += "\n"
+		}
+	}
 
 	d := gomail.NewDialer(e.smtpHost, e.smtpPort, e.fromEmail, e.fromPassword)
 
