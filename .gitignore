@@ -45,4 +45,12 @@ build/
 dist/
 
 # Docker
-.dockerignore 
+.dockerignore
+
+# MySQL data (local development)
+mysql/data/
+mysql/backups/
+
+# Temporary files
+*.tmp
+*.temp 
