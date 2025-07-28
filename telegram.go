@@ -336,7 +336,7 @@ func (t *TelegramBot) sendHelp(chatID int64) {
 
 📧 Сіздің өтінішіңіз әкімшілікке email арқылы жіберіледі..
 
-🔙 Басты мәзірге оралу үшін /start немесе /menu пәрменін пайдаланыңыз
+🔙 Басты мәзірге оралу үшін /start немесе /menu пәрменін пайдаланыңыз`
 
 	// Отправляем помощь с кнопкой возврата в главное меню
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
@@ -353,9 +353,9 @@ func (t *TelegramBot) sendHelp(chatID int64) {
 func getTypeDisplayName(feedbackType string) string {
 	switch feedbackType {
 	case "complaint":
-		return "жалоба"
+		return "шағым жіберу"
 	case "review":
-		return "отзыв"
+		return "Пікір қалдыру"
 	default:
 		return feedbackType
 	}
