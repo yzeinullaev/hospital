@@ -144,6 +144,10 @@ func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		t.sendMainMenu(callback.Message.Chat.ID, "")
 	case "help":
 		t.sendHelp(callback.Message.Chat.ID)
+	case "back_to_menu":
+		state.State = "start"
+		state.Data = make(map[string]string)
+		t.sendMainMenu(callback.Message.Chat.ID, "")
 	default:
 		t.sendMainMenu(callback.Message.Chat.ID, "")
 	}
@@ -269,7 +273,16 @@ func (t *TelegramBot) handleStats(chatID int64) {
 		"⭐ Отзывы: %d\n"+
 		"📈 Всего: %d", complaints, reviews, total)
 
-	t.sendMainMenu(chatID, statsText)
+	// Отправляем статистику с кнопкой возврата в главное меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "back_to_menu"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(chatID, statsText)
+	msg.ReplyMarkup = keyboard
+	t.bot.Send(msg)
 }
 
 func (t *TelegramBot) sendConfirmationMenu(chatID int64, text string) {
@@ -291,20 +304,29 @@ func (t *TelegramBot) sendHelp(chatID int64) {
 	helpText := `ℹ️ Помощь
 
 📝 Как отправить жалобу:
-1. Нажмите кнопку "📝 Жалоба"
-2. Напишите текст вашей жалобы
+1. Нажмите кнопку "📝 Отправить жалобу"
+2. Опишите вашу жалобу подробно
 3. Отправьте сообщение
 
 ⭐ Как оставить отзыв:
-1. Нажмите кнопку "⭐ Отзыв"
-2. Напишите текст вашего отзыва
+1. Нажмите кнопку "⭐ Оставить отзыв"
+2. Опишите ваш отзыв подробно
 3. Отправьте сообщение
 
 📧 Ваше обращение будет отправлено на email администрации.
 
 🔙 Для возврата в главное меню используйте /start или /menu`
 
-	t.sendMainMenu(chatID, helpText)
+	// Отправляем помощь с кнопкой возврата в главное меню
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 Главное меню", "back_to_menu"),
+		),
+	)
+
+	msg := tgbotapi.NewMessage(chatID, helpText)
+	msg.ReplyMarkup = keyboard
+	t.bot.Send(msg)
 }
 
 func getTypeDisplayName(feedbackType string) string {
