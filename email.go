@@ -30,8 +30,14 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 		return fmt.Errorf("email configuration is incomplete")
 	}
 
-	// Используем текущее время вместо feedback.CreatedAt
-	currentTime := time.Now()
+	// Используем текущее время в правильном часовом поясе
+	timezone := getEnv("TIMEZONE", "Asia/Almaty")
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		// Если не удалось загрузить часовой пояс, используем UTC
+		loc = time.UTC
+	}
+	currentTime := time.Now().In(loc)
 
 	// Формируем тему письма
 	subject := fmt.Sprintf("Новое обращение: %s", getTypeDisplayName(feedback.Type))

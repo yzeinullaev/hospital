@@ -174,6 +174,15 @@ func (t *TelegramBot) handleTypeSelection(message *tgbotapi.Message, state *User
 func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserState) {
 	feedbackType := state.Data["type"]
 
+	// Используем правильный часовой пояс
+	timezone := getEnv("TIMEZONE", "Asia/Almaty")
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		// Если не удалось загрузить часовой пояс, используем UTC
+		loc = time.UTC
+	}
+	currentTime := time.Now().In(loc)
+
 	feedback := &Feedback{
 		UserID:    message.From.ID,
 		Username:  message.From.UserName,
@@ -182,7 +191,7 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		Message:   message.Text,
 		Type:      feedbackType,
 		Status:    "new",
-		CreatedAt: time.Now(), // Устанавливаем текущее время
+		CreatedAt: currentTime, // Устанавливаем время в правильном часовом поясе
 	}
 
 	// Сохраняем в базу данных
