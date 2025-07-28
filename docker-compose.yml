@@ -32,7 +32,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - /opt/mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
     restart: unless-stopped
     networks:
@@ -41,4 +41,7 @@ services:
 
 networks:
   hospital_network:
-    driver: bridge 
+    driver: bridge
+
+volumes:
+  mysql_data: 
