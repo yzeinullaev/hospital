@@ -290,9 +290,9 @@ func (t *TelegramBot) handleStats(chatID int64) {
 	total := complaints + reviews
 
 	statsText := fmt.Sprintf("📊 Өтініштер статистикасы\n\n"+
-		"📝 Жалобы: %d\n"+
-		"⭐ Отзывы: %d\n"+
-		"📈 Всего: %d", complaints, reviews, total)
+		"📝 Шағымдар: %d\n"+
+		"⭐ Пікірлер: %d\n"+
+		"📈 Барлығы: %d", complaints, reviews, total)
 
 	// Отправляем статистику с кнопкой возврата в главное меню
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
