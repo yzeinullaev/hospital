@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/sirupsen/logrus"
 )
 
 type UserState struct {
@@ -17,11 +17,11 @@ type TelegramBot struct {
 	bot      *tgbotapi.BotAPI
 	database *Database
 	email    *EmailService
-	logger   *log.Logger
+	logger   *logrus.Logger
 	users    map[int64]*UserState
 }
 
-func NewTelegramBot(database *Database, email *EmailService, logger *log.Logger) (*TelegramBot, error) {
+func NewTelegramBot(database *Database, email *EmailService, logger *logrus.Logger) (*TelegramBot, error) {
 	token := getEnv("TELEGRAM_BOT_TOKEN", "")
 	if token == "" {
 		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN is not set")
@@ -42,7 +42,7 @@ func NewTelegramBot(database *Database, email *EmailService, logger *log.Logger)
 }
 
 func (t *TelegramBot) Start() error {
-	t.logger.Printf("Bot started: @%s", t.bot.Self.UserName)
+	t.logger.Info("Bot started: @", t.bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -163,14 +163,14 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 
 	// Сохраняем в базу данных
 	if err := t.database.SaveFeedback(feedback); err != nil {
-		t.logger.Printf("Failed to save feedback: %v", err)
+		t.logger.Error("Failed to save feedback: ", err)
 		t.sendMessage(message.Chat.ID, "Произошла ошибка при сохранении. Попробуйте позже.")
 		return
 	}
 
 	// Отправляем email
 	if err := t.email.SendFeedbackEmail(feedback); err != nil {
-		t.logger.Printf("Failed to send email: %v", err)
+		t.logger.Error("Failed to send email: ", err)
 	}
 
 	// Отправляем подтверждение пользователю
