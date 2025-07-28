@@ -127,11 +127,11 @@ func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	case "complaint":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "complaint"
-		t.sendMessage(callback.Message.Chat.ID, "Пожалуйста, напишите вашу жалобу:")
+		t.sendMessage(callback.Message.Chat.ID, "📝 Пожалуйста, опишите вашу жалобу подробно. Мы рассмотрим её в кратчайшие сроки.")
 	case "review":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "review"
-		t.sendMessage(callback.Message.Chat.ID, "Пожалуйста, напишите ваш отзыв:")
+		t.sendMessage(callback.Message.Chat.ID, "⭐ Пожалуйста, опишите ваш отзыв подробно. Мы ценим ваше мнение.")
 	case "stats":
 		if t.isAdmin(userID) {
 			t.handleStats(callback.Message.Chat.ID)
@@ -141,11 +141,11 @@ func (t *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	case "new_request":
 		state.State = "start"
 		state.Data = make(map[string]string)
-		t.sendMainMenu(callback.Message.Chat.ID, "Выберите тип обращения:")
+		t.sendMainMenu(callback.Message.Chat.ID, "")
 	case "help":
 		t.sendHelp(callback.Message.Chat.ID)
 	default:
-		t.sendMainMenu(callback.Message.Chat.ID, "Выберите действие:")
+		t.sendMainMenu(callback.Message.Chat.ID, "")
 	}
 }
 
@@ -156,11 +156,11 @@ func (t *TelegramBot) handleTypeSelection(message *tgbotapi.Message, state *User
 	case "жалоба", "complaint":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "complaint"
-		t.sendMessage(message.Chat.ID, "Пожалуйста, напишите вашу жалобу:")
+		t.sendMessage(message.Chat.ID, "📝 Пожалуйста, опишите вашу жалобу подробно. Мы рассмотрим её в кратчайшие сроки.")
 	case "отзыв", "review":
 		state.State = "waiting_for_message"
 		state.Data["type"] = "review"
-		t.sendMessage(message.Chat.ID, "Пожалуйста, напишите ваш отзыв:")
+		t.sendMessage(message.Chat.ID, "⭐ Пожалуйста, опишите ваш отзыв подробно. Мы ценим ваше мнение.")
 	default:
 		t.sendMessage(message.Chat.ID, "Пожалуйста, выберите 'жалоба' или 'отзыв'")
 	}
@@ -206,14 +206,22 @@ func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
 	// Проверяем, является ли пользователь администратором
 	isAdmin := t.isAdmin(chatID)
 
+	// Заголовок меню
+	menuText := "🏥 Главное меню системы обратной связи больницы\n\nВыберите действие:"
+
 	var keyboard tgbotapi.InlineKeyboardMarkup
 
 	if isAdmin {
 		// Меню для администратора с кнопкой статистики
 		keyboard = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
-				tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
+				tgbotapi.NewInlineKeyboardButtonData("📝 Отправить жалобу", "complaint"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Оставить отзыв", "review"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
 			),
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("📊 Статистика", "stats"),
@@ -223,13 +231,18 @@ func (t *TelegramBot) sendMainMenu(chatID int64, text string) {
 		// Меню для обычных пользователей без статистики
 		keyboard = tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("📝 Жалоба", "complaint"),
-				tgbotapi.NewInlineKeyboardButtonData("⭐ Отзыв", "review"),
+				tgbotapi.NewInlineKeyboardButtonData("📝 Отправить жалобу", "complaint"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("⭐ Оставить отзыв", "review"),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("❓ Помощь", "help"),
 			),
 		)
 	}
 
-	msg := tgbotapi.NewMessage(chatID, text)
+	msg := tgbotapi.NewMessage(chatID, menuText)
 	msg.ReplyMarkup = keyboard
 	t.bot.Send(msg)
 }
