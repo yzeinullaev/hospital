@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"gopkg.in/gomail.v2"
 )
@@ -29,6 +30,9 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 		return fmt.Errorf("email configuration is incomplete")
 	}
 
+	// Используем текущее время вместо feedback.CreatedAt
+	currentTime := time.Now()
+
 	// Формируем тему письма
 	subject := fmt.Sprintf("Новое обращение: %s", getTypeDisplayName(feedback.Type))
 
@@ -53,7 +57,7 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 		feedback.Username,
 		feedback.UserID,
 		getTypeDisplayName(feedback.Type),
-		feedback.CreatedAt.Format("02.01.2006 15:04:05"),
+		currentTime.Format("02.01.2006 15:04:05"),
 		feedback.Message,
 	)
 

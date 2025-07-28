@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
@@ -181,6 +182,7 @@ func (t *TelegramBot) handleMessageInput(message *tgbotapi.Message, state *UserS
 		Message:   message.Text,
 		Type:      feedbackType,
 		Status:    "new",
+		CreatedAt: time.Now(), // Устанавливаем текущее время
 	}
 
 	// Сохраняем в базу данных
