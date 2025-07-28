@@ -9,18 +9,18 @@ import (
 type EmailService struct {
 	fromEmail    string
 	fromPassword string
+	toEmail      string
 	smtpHost     string
 	smtpPort     int
-	toEmail      string
 }
 
 func NewEmailService() *EmailService {
 	return &EmailService{
 		fromEmail:    getEnv("EMAIL_FROM", ""),
 		fromPassword: getEnv("EMAIL_PASSWORD", ""),
+		toEmail:      getEnv("EMAIL_TO", ""),
 		smtpHost:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 		smtpPort:     getEnvAsInt("SMTP_PORT", 587),
-		toEmail:      getEnv("EMAIL_TO", ""),
 	}
 }
 
@@ -29,72 +29,39 @@ func (e *EmailService) SendFeedbackEmail(feedback *Feedback) error {
 		return fmt.Errorf("email configuration is incomplete")
 	}
 
-	var subject, typeText string
-	if feedback.Type == "complaint" {
-		subject = "🚨 НОВАЯ ЖАЛОБА - Больница"
-		typeText = "ЖАЛОБА"
-	} else {
-		subject = "⭐ НОВЫЙ ОТЗЫВ - Больница"
-		typeText = "ОТЗЫВ"
-	}
+	// Формируем тему письма
+	subject := fmt.Sprintf("Новое обращение: %s", getTypeDisplayName(feedback.Type))
 
 	// Формируем тело письма
-	body := fmt.Sprintf(`
-🏥 Система обратной связи больницы
+	body := fmt.Sprintf(`🏥 Новое обращение в системе обратной связи
 
-Тип: %s
-ID обращения: %d
-Пользователь: %s %s (@%s)
-ID пользователя: %d
+👤 Отправитель:
+• Имя: %s %s
+• Username: @%s
+• ID: %d
 
-Сообщение:
+📝 Тип обращения: %s
+📅 Дата: %s
+
+💬 Сообщение:
 %s
 
-Дата: %s
-`,
-		typeText,
-		feedback.ID,
-		feedback.FirstName, feedback.LastName, feedback.Username,
+---
+Это автоматическое уведомление от системы обратной связи больницы.`,
+		feedback.FirstName,
+		feedback.LastName,
+		feedback.Username,
 		feedback.UserID,
-		feedback.Message,
+		getTypeDisplayName(feedback.Type),
 		feedback.CreatedAt.Format("02.01.2006 15:04:05"),
+		feedback.Message,
 	)
-
-	// Добавляем информацию о медиафайлах
-	if len(feedback.MediaFiles) > 0 {
-		body += fmt.Sprintf("\n📎 Прикрепленные файлы (%d):\n", len(feedback.MediaFiles))
-		for i, media := range feedback.MediaFiles {
-			body += fmt.Sprintf("%d. %s", i+1, media.FileType)
-			if media.FileName != "" {
-				body += fmt.Sprintf(" - %s", media.FileName)
-			}
-			if media.FileSize > 0 {
-				body += fmt.Sprintf(" (%d байт)", media.FileSize)
-			}
-			body += "\n"
-		}
-	}
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", e.fromEmail)
 	m.SetHeader("To", e.toEmail)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/plain", body)
-
-	// Добавляем информацию о медиафайлах в тело письма
-	if len(feedback.MediaFiles) > 0 {
-		body += "\n\n📎 Медиафайлы:\n"
-		for i, media := range feedback.MediaFiles {
-			body += fmt.Sprintf("%d. Тип: %s", i+1, media.FileType)
-			if media.FileName != "" {
-				body += fmt.Sprintf(", Файл: %s", media.FileName)
-			}
-			if media.FileSize > 0 {
-				body += fmt.Sprintf(", Размер: %d байт", media.FileSize)
-			}
-			body += "\n"
-		}
-	}
 
 	d := gomail.NewDialer(e.smtpHost, e.smtpPort, e.fromEmail, e.fromPassword)
 

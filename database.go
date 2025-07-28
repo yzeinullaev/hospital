@@ -18,19 +18,6 @@ type Feedback struct {
 	Type      string    `json:"type"` // "complaint" или "review"
 	CreatedAt time.Time `json:"created_at"`
 	Status    string    `json:"status"` // "new", "processed", "sent"
-	// Новые поля для медиафайлов
-	MediaFiles []MediaFile `json:"media_files"`
-}
-
-type MediaFile struct {
-	ID         int64  `json:"id"`
-	FeedbackID int64  `json:"feedback_id"`
-	FileID     string `json:"file_id"`
-	FileType   string `json:"file_type"` // "photo", "video", "document", "audio"
-	FileName   string `json:"file_name"`
-	FileSize   int64  `json:"file_size"`
-	MimeType   string `json:"mime_type"`
-	URL        string `json:"url"`
 }
 
 type Database struct {
@@ -93,46 +80,16 @@ func createTables(db *sql.DB) error {
 		return fmt.Errorf("failed to create feedback table: %w", err)
 	}
 
-	// Создаем таблицу media_files
-	mediaQuery := `
-	CREATE TABLE IF NOT EXISTS media_files (
-		id BIGINT AUTO_INCREMENT PRIMARY KEY,
-		feedback_id BIGINT NOT NULL,
-		file_id VARCHAR(255) NOT NULL,
-		file_type ENUM('photo', 'video', 'document', 'audio') NOT NULL,
-		file_name VARCHAR(255),
-		file_size BIGINT,
-		mime_type VARCHAR(100),
-		url TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		INDEX idx_feedback_id (feedback_id),
-		INDEX idx_file_type (file_type),
-		FOREIGN KEY (feedback_id) REFERENCES feedback(id) ON DELETE CASCADE
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-	`
-
-	if _, err := db.Exec(mediaQuery); err != nil {
-		return fmt.Errorf("failed to create media_files table: %w", err)
-	}
-
 	return nil
 }
 
 func (d *Database) SaveFeedback(feedback *Feedback) error {
-	// Начинаем транзакцию
-	tx, err := d.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Сохраняем основное обращение
 	query := `
 	INSERT INTO feedback (user_id, username, first_name, last_name, message, type, status)
 	VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
-	result, err := tx.Exec(query,
+	result, err := d.db.Exec(query,
 		feedback.UserID,
 		feedback.Username,
 		feedback.FirstName,
@@ -151,50 +108,6 @@ func (d *Database) SaveFeedback(feedback *Feedback) error {
 	}
 
 	feedback.ID = id
-
-	// Сохраняем медиафайлы
-	if len(feedback.MediaFiles) > 0 {
-		for i := range feedback.MediaFiles {
-			feedback.MediaFiles[i].FeedbackID = id
-			if err := d.saveMediaFile(tx, &feedback.MediaFiles[i]); err != nil {
-				return fmt.Errorf("failed to save media file: %w", err)
-			}
-		}
-	}
-
-	// Подтверждаем транзакцию
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-func (d *Database) saveMediaFile(tx *sql.Tx, media *MediaFile) error {
-	query := `
-	INSERT INTO media_files (feedback_id, file_id, file_type, file_name, file_size, mime_type, url)
-	VALUES (?, ?, ?, ?, ?, ?, ?)
-	`
-
-	result, err := tx.Exec(query,
-		media.FeedbackID,
-		media.FileID,
-		media.FileType,
-		media.FileName,
-		media.FileSize,
-		media.MimeType,
-		media.URL,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to save media file: %w", err)
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("failed to get media file id: %w", err)
-	}
-
-	media.ID = id
 	return nil
 }
 
@@ -230,53 +143,10 @@ func (d *Database) GetNewFeedbacks() ([]*Feedback, error) {
 			return nil, fmt.Errorf("failed to scan feedback: %w", err)
 		}
 
-		// Загружаем медиафайлы для этого обращения
-		mediaFiles, err := d.getMediaFiles(feedback.ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get media files: %w", err)
-		}
-		feedback.MediaFiles = mediaFiles
-
 		feedbacks = append(feedbacks, feedback)
 	}
 
 	return feedbacks, nil
-}
-
-func (d *Database) getMediaFiles(feedbackID int64) ([]MediaFile, error) {
-	query := `
-	SELECT id, feedback_id, file_id, file_type, file_name, file_size, mime_type, url
-	FROM media_files
-	WHERE feedback_id = ?
-	ORDER BY id
-	`
-
-	rows, err := d.db.Query(query, feedbackID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query media files: %w", err)
-	}
-	defer rows.Close()
-
-	var mediaFiles []MediaFile
-	for rows.Next() {
-		var media MediaFile
-		err := rows.Scan(
-			&media.ID,
-			&media.FeedbackID,
-			&media.FileID,
-			&media.FileType,
-			&media.FileName,
-			&media.FileSize,
-			&media.MimeType,
-			&media.URL,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan media file: %w", err)
-		}
-		mediaFiles = append(mediaFiles, media)
-	}
-
-	return mediaFiles, nil
 }
 
 func (d *Database) UpdateFeedbackStatus(id int64, status string) error {
