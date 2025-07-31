@@ -26,7 +26,6 @@ services:
     image: mysql:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=password
-      - MYSQL_DATABASE=hospital_feedback
       - MYSQL_USER=hospital_user
       - MYSQL_PASSWORD=hospital_password
     ports:

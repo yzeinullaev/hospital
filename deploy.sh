@@ -42,13 +42,17 @@ docker-compose up --build -d
 # Ждем инициализации MySQL с проверкой
 echo "⏳ Ждем инициализации MySQL..."
 for i in {1..60}; do
-    if docker-compose exec -T mysql mysqladmin ping -h localhost -u hospital_user -phospital_password > /dev/null 2>&1; then
+    if docker-compose exec -T mysql mysqladmin ping -h localhost -u root -ppassword > /dev/null 2>&1; then
         echo "✅ MySQL готов к работе"
         break
     fi
     echo "⏳ Ожидание MySQL... ($i/60)"
     sleep 5
 done
+
+# Создаем базу данных если её нет
+echo "🗄️ Создание базы данных..."
+docker-compose exec -T mysql mysql -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS hospital_feedback CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 
 # Проверяем статус контейнеров
 echo "📊 Статус контейнеров:"
